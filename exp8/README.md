@@ -1,1 +1,1 @@
-本次实验完成了Cohen-Sutherland裁剪算法的一个程序
+本次实验完成了Cothen-Sutherland裁剪算法，运行程序后可以输入任意直线段进行裁剪。

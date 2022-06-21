@@ -1,102 +1,130 @@
-#include <GL/glut.h>      // OPenGL实用工具库
+#include <GL/glut.h>
+#include <iostream>
 
-#define LEFT 1
-#define RIGHT 2
-#define BOTTOM 4
-#define TOP 8
-
-int x1 = 150, y1 = 50, x2 = 250, y2 = 150, XL = 100, XR = 300, YB = 100, YT = 200;  //(x1,y1)、(x2,y2)为直线段的端点，XL为左边界，XR为右边界，YB为下边界，YT为上边界
-int x1_init = 150, y1_init = 50, x2_init = 250, y2_init = 150;  //将直线段端点备份，以便画出裁剪前的直线段
-
-char encode(float x, float y)
-{
-    char c = 0;
-    if (x < XL) c |= LEFT;
-    if (x > XR) c |= RIGHT;
-    if (y < YB) c |= BOTTOM;
-    if (y > YT) c |= TOP;
-    return c;
+GLint winWidth = 400, winLength = 400, vWidth = 200, vLength = 200;
+void Cothen_Sutherland();
+class point {
+public:
+    int x, y, d1 = 0, d2 = 0, d3 = 0, d4 = 0;
+};
+point P[2];
+void init() {
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(-200, 200, -200, 200);
+    glLineWidth(2);
+    glEnable(GL_BLEND);
 }
-
-void CS_LineClip(int& x1, int& y1, int& x2, int& y2, int XL, int XR, int YB, int YT) {
-    char code1 = encode(x1, y1);
-    char code2 = encode(x2, y2);
-    char code;
-    int x, y;
-    while (code1 || code2) {
-        if ((code1 & code2) != 0)return; //在外同侧
-        if (code1 != 0) code = code1;
-        else code = code2;
-        if ((LEFT & code) != 0) {
-            x = XL; y = y1 + (y2 - y1) * (XL - x1) / (x2 - x1);
-        }
-        else if ((RIGHT & code) != 0) {
-            x = XR; y = y1 + (y2 - y1) * (XR - x1) / (x2 - x1);
-        }
-        else if ((BOTTOM & code) != 0) {
-            y = YB; x = x1 + (x2 - x1) * (YB - y1) / (y2 - y1);
-        }
-        else if ((TOP & code) != 0) {
-            y = YT; x = x1 + (x2 - x1) * (YT - y1) / (y2 - y1);
-        }
-        if (code == code1) {
-            x1 = x; y1 = y; code1 = encode(x, y);
-        }
-        else { x2 = x; y2 = y; code2 = encode(x, y); }
+void disPlayFnc() {
+    std::cout << "请输入直线的端点：";
+    std::cin >> P[0].x >> P[0].y >> P[1].x >> P[1].y;
+    for (int i = 0; i < 2; i++) {
+        if (P[i].x > vWidth / 2)
+            P[i].d4 = 1;
+        if (P[i].x < -vWidth / 2)
+            P[i].d3 = 1;
+        if (P[i].y > vLength / 2)
+            P[i].d2 = 1;
+        if (P[i].y < -vLength / 2)
+            P[i].d1 = 1;
+        printf("%d%d%d%d", P[i].d1, P[i].d2, P[i].d3, P[i].d4);
     }
-}
-
-void init(void)
-{
-    glClearColor(1.0, 1.0, 1.0, 0.0);  // 设置背景颜色
-    glMatrixMode(GL_PROJECTION);       // 设置投影参数
-    gluOrtho2D(0.0, 600.0, 0.0, 400.0); // 设置场景的大小
-}
-
-
-void draw(void)
-{
     glClear(GL_COLOR_BUFFER_BIT);
-
-    glColor3f(1.0, 0.0, 0.0);      // 设置画图颜色
-    glLineWidth(2);                // 设置边框宽度
-    glPointSize(2);
-    glPushMatrix();
-    //glTranslatef(dx, dy, 0); //图形变换操作须放在绘制之前
-
-    glBegin(GL_LINE_LOOP);
-    glVertex2i(XL, YT);
-    glVertex2i(XL, YB);
-    glVertex2i(XR, YB);
-    glVertex2i(XR, YT);
-    glEnd();
-
-    //绘制未裁剪前的线段
     glBegin(GL_LINES);
-    glVertex2i(x1_init, y1_init);
-    glVertex2i(x2_init, y2_init);
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex2i(P[0].x, P[0].y);
+    glVertex2i(P[1].x, P[1].y);
     glEnd();
-    //绘制裁剪后的线段
-    glColor3f(0.0, 0.0, 0.0);
+    glFlush();
+    Cothen_Sutherland();
+}
+void Cothen_Sutherland() {
+    if ((P[0].d1 | P[1].d1 + P[0].d2 | P[1].d2 + P[0].d3 | P[1].d3 + P[0].d4 | P[1].d4) == 0) {
+        glBegin(GL_POLYGON);
+        glColor4f(1.0, 0.0, 0.0, 0.5);
+        glVertex2i(-100, 100);
+        glVertex2i(100, 100);
+        glVertex2i(100, -100);
+        glVertex2i(-100, -100);
+        glEnd();
+        glBegin(GL_LINES);
+        glColor3f(0.0, 1.0, 0.0);
+        glVertex2i(P[0].x, P[0].y);
+        glVertex2i(P[1].x, P[1].y);
+        glEnd();
+        glFlush();
+        return;
+    }
+    if ((P[0].d1 & P[1].d1 + P[0].d2 & P[1].d2 + P[0].d3 & P[1].d3 + P[0].d4 & P[1].d4) != 0) {
+        glBegin(GL_POLYGON);
+        glColor4f(1.0, 0.0, 0.0, 0.5);
+        glVertex2i(-100, 100);
+        glVertex2i(100, 100);
+        glVertex2i(100, -100);
+        glVertex2i(-100, -100);
+        glEnd();
+        glFlush();
+        return;
+    }
+    double k = (double(P[0].y) - P[1].y) / (double(P[0].x) - P[1].x);
+    printf("%lf", k);
+    double a[4];
+    a[0] = k * (-100.0 - P[0].x) + P[0].y;//left
+    a[1] = k * (100.0 - P[0].x) + P[0].y;//right
+    a[2] = (100.0 - P[0].y) / k + P[0].x;//top
+    a[3] = (-100.0 - P[0].y) / k + P[0].x;//bottom
+    point newp[2];
+    int count = 0;
+    if (P[0].d1 + P[0].d2 + P[0].d3 + P[0].d4 == 0) {
+        newp[count] = P[0];
+        count++;
+    }
+    else if (P[1].d1 + P[1].d2 + P[1].d3 + P[1].d4 == 0) {
+        newp[count] = P[1];
+        count++;
+    }
+    for (int i = 0; i < 4; i++) {
+        if (a[i] <= 100 && a[i] >= -100) {
+            switch (i)
+            {
+            case 0:newp[count].x = -100, newp[count].y = a[i]; count++; break;
+            case 1:newp[count].x = 100, newp[count].y = a[i]; count++; break;
+            case 2:newp[count].x = a[i], newp[count].y = 100; count++; break;
+            case 3:newp[count].x = a[i], newp[count].y = -100; count++; break;
+            default:
+                break;
+            }
+        }
+        if (count > 1)
+            break;
+        printf("  %d  %d", newp[count].x, newp[count].y);
+    }
+    glBegin(GL_POLYGON);
+    glColor4f(1.0, 0.0, 0.0, 0.5);
+    glVertex2i(-100, 100);
+    glVertex2i(100, 100);
+    glVertex2i(100, -100);
+    glVertex2i(-100, -100);
+    glEnd();
     glBegin(GL_LINES);
-    glVertex2i(x1, y1);
-    glVertex2i(x2, y2);
+    glColor3f(0.0, 1.0, 0.0);
+    glVertex2i(newp[0].x, newp[0].y);
+    glVertex2i(newp[1].x, newp[1].y);
     glEnd();
-
-    CS_LineClip(x1, y1, x2, y2, XL, XR, YB, YT);
-    glPopMatrix();
-    glFlush();     // 处理绘图pipeLine
-    //glutSwapBuffers(); //GLUT_DOUBLE
+    glFlush();
+    return;
 }
 
-void main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-    glutInit(&argc, argv);  // 初始化GLUT环境
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);   // GLUT显示模式：单缓冲区、RGB颜色模型
-    glutInitWindowPosition(50, 100);   // 窗口左上角的位置
-    glutInitWindowSize(500, 400);      // 显示窗口的大小
-    glutCreateWindow("李志辉20201120283(Cohen-Sutherland裁剪算法)"); // 创建显示窗口，加上标题
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(winWidth, winLength);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("李志辉20201120283（Cothen-Sutherland裁剪算法）");
+
     init();
-    glutDisplayFunc(draw);           // 调用绘图函数
-    glutMainLoop();				 // 进入事件处理循环
+    glutDisplayFunc(disPlayFnc);
+    glutMainLoop();
 }
+
